@@ -11,7 +11,7 @@ protected = Restricted()
 # Just a health check
 @app.route("/")
 def url_root():
-    return "OK"
+    return "OK" 
 
 
 # Just a health check
@@ -23,23 +23,31 @@ def url_health():
 # e.g. http://127.0.0.1:8000/login
 @app.route("/login", methods=['POST'])
 def url_login():
-    username = request.form['username']
-    password = request.form['password']
+    payload = request.get_json()
+    username = payload['username']
+    password = payload['password']
+    encoded_jwt = login.generate_token(username, password)
+    if encoded_jwt is None:
+        return jsonify({"error": "Incorrect Username or Password",}), 403
     res = {
-        "data": login.generate_token(username, password)
+        "data": encoded_jwt 
     }
-    return jsonify(res)
+    return jsonify(res), 201
 
 
 # # e.g. http://127.0.0.1:8000/protected
 @app.route("/protected")
 def url_protected():
     auth_token = request.headers.get('Authorization')
+    if auth_token is None:
+        return jsonify({"error": "missing Authorization header",}), 400
+    data = protected.access_data(auth_token)
+    if data is None:
+        return jsonify({"error": "Invalid token",}), 403
     res = {
-        "data": protected.access_data(auth_token)
+        "data": data 
     }
     return jsonify(res)
-
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8000)
